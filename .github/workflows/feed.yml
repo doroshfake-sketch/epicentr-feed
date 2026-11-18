@@ -1,0 +1,40 @@
+name: Epicentr feed
+
+on:
+  schedule:
+    # час у UTC: 08:00, 20:00, 21:00 (Київ взимку 10:00, 22:00, 23:00)
+    - cron: "0 8 * * *"
+    - cron: "0 20 * * *"
+    - cron: "0 21 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate feed
+        shell: pwsh
+        env:
+          KEYCRM_API_KEY: ${{ secrets.KEYCRM_API_KEY }}
+        run: |
+          New-Item -ItemType Directory -Force site | Out-Null
+          Set-Location site
+          ../make-feed.ps1 -Out epicentr.xml
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
